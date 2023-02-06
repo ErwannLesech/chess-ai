@@ -2,6 +2,8 @@ import pygame
 from const import *
 from board import Board
 from dragger import Dragger
+from config import Config
+from square import Square
 
 class Game:
     def __init__(self):
@@ -9,16 +11,25 @@ class Game:
         self.hovered_sqr = None
         self.board = Board()
         self.dragger = Dragger()
+        self.config = Config()
     # Show methods
     def draw_grid(self, surface):
+        theme = self.config.theme
         for row in range(ROWS):
             for col in range(COLS):
-                if not (row + col) % 2:
-                    color = (69, 139, 0)  #green
-                else:
-                    color = (255, 239, 219)  #white
+                color = theme.bg.light if (row + col) % 2 == 0 else theme.bg.dark  #green
                 grid = (col * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
                 pygame.draw.rect(surface, color, grid)
+                if col == 0:
+                    color = theme.bg.dark if row % 2 == 0 else theme.bg.light
+                    lbl = self.config.font.render(str(ROWS - row), 1, color)
+                    lbl_pos = (5, 5 + row * CELL_HEIGHT)
+                    surface.blit(lbl, lbl_pos)
+                if row == 7:
+                    color = theme.bg.dark if (row + col) % 2 == 0 else theme.bg.light
+                    lbl = self.config.font.render(Square.get_alphacol(col), 1, color)
+                    lbl_pos = (col * CELL_WIDTH + CELL_HEIGHT - 20, HEIGHT - 20)
+                    surface.blit(lbl, lbl_pos)
 
     def draw_pieces(self, surface):
         for row in range(ROWS):
@@ -33,20 +44,22 @@ class Game:
                         surface.blit(img, piece.texture_rect)
 
     def draw_possible_moves(self, surface):
+        theme = self.config.theme
         if self.dragger.piece:
             piece = self.dragger.piece
             for move in piece.moves:
-                color = '#CB6464' if (move.final.row + move.final.col) % 2 == 0 else '#CB4646'
+                color = theme.moves.light if (move.final.row + move.final.col) % 2 == 0 else theme.moves.dark
                 rect = (move.final.col * CELL_WIDTH, move.final.row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
                 pygame.draw.rect(surface, color, rect)
 
     def draw_last_move(self, surface):
+        theme = self.config.theme
         if self.board.last_move:
             initial = self.board.last_move.initial
             final = self.board.last_move.final
 
             for pos in [initial, final]:
-                color = (244, 247, 116) if (pos.row + pos.col) % 2 == 0 else (172, 195, 51)
+                color = theme.trace.light if (pos.row + pos.col) % 2 == 0 else theme.trace.dark
                 rect = (pos.col * CELL_WIDTH, pos.row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
                 pygame.draw.rect(surface, color, rect)
 
@@ -61,3 +74,15 @@ class Game:
 
     def next_turn(self):
         self.next_player = "white" if self.next_player == "black" else "black"
+
+    def change_theme(self):
+        self.config.change_theme()
+
+    def play_sound(self, captured=False):
+        if captured:
+            self.config.capture_sound.play()
+        else:
+            self.config.move_sound.play()
+
+    def reset(self):
+        self.__init__()
