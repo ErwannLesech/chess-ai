@@ -5,9 +5,22 @@ from move import Move
 class Board:
     def __init__(self):
         self.squares = [[0 for _ in range(8)] for col in range(COLS)]
+        self.last_move = None
         self.create()
         self.add_pieces("black")
         self.add_pieces("white")
+
+    def move(self, piece, move):
+        initial = move.initial
+        final = move.final
+        self.squares[initial.row][initial.col].piece = None
+        self.squares[final.row][final.col].piece = piece
+        piece.moved = True
+        piece.clear_moves()
+        self.last_move = move
+
+    def valid_move(self, piece, move):
+        return move in piece.moves
 
     def possible_moves(self, piece, row, col):
 

@@ -5,6 +5,8 @@ from dragger import Dragger
 
 class Game:
     def __init__(self):
+        self.next_player = "white"
+        self.hovered_sqr = None
         self.board = Board()
         self.dragger = Dragger()
     # Show methods
@@ -37,3 +39,25 @@ class Game:
                 color = '#CB6464' if (move.final.row + move.final.col) % 2 == 0 else '#CB4646'
                 rect = (move.final.col * CELL_WIDTH, move.final.row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
                 pygame.draw.rect(surface, color, rect)
+
+    def draw_last_move(self, surface):
+        if self.board.last_move:
+            initial = self.board.last_move.initial
+            final = self.board.last_move.final
+
+            for pos in [initial, final]:
+                color = (244, 247, 116) if (pos.row + pos.col) % 2 == 0 else (172, 195, 51)
+                rect = (pos.col * CELL_WIDTH, pos.row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
+                pygame.draw.rect(surface, color, rect)
+
+    def draw_over(self, surface):
+        if self.hovered_sqr:
+            color = (180,180,180)
+            rect = (self.hovered_sqr.col * CELL_WIDTH, self.hovered_sqr.row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
+            pygame.draw.rect(surface, color, rect, width=3)
+
+    def set_over(self, row, col):
+        self.hovered_sqr = self.board.squares[row][col]
+
+    def next_turn(self):
+        self.next_player = "white" if self.next_player == "black" else "black"
