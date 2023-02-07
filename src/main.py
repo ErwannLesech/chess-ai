@@ -36,7 +36,7 @@ class Main:
                     if board.squares[clicked_row][clicked_col].has_piece():
                         piece = board.squares[clicked_row][clicked_col].piece
                         if piece.color == game.next_player:
-                            board.possible_moves(piece, clicked_row, clicked_col)
+                            board.possible_moves(piece, clicked_row, clicked_col, bool=True)
                             dragger.save_initial(event.pos)
                             dragger.drag_piece(piece)
                             game.draw_grid(screen)

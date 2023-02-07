@@ -1,3 +1,5 @@
+import copy
+
 from const import *
 from square import Square
 from piece import *
@@ -19,6 +21,12 @@ class Board:
         if piece.name == "pawn":
             self.check_promotion(piece, final)
 
+        if piece.name == "king":
+            if self.castling(initial, final):
+                diff = final.col - initial.col
+                rook = piece.left_rook if (diff < 0) else piece.right_rook
+                self.move(rook, rook.moves[-1])
+
         piece.moved = True
         piece.clear_moves()
         self.last_move = move
@@ -30,7 +38,25 @@ class Board:
         if final.row == 0 or final.row == 7:
             self.squares[final.row][final.col].piece = Queen(piece.color)
 
-    def possible_moves(self, piece, row, col):
+    def castling(self, initial, final):
+        return abs(initial.col - final.col) == 2
+
+    def in_check(self, piece, move):
+        temp_piece = copy.deepcopy(piece)
+        temp_board = copy.deepcopy(self)
+        temp_board.move(temp_piece, move)
+
+        for row in range(ROWS):
+            for col in range(COLS):
+                if temp_board.squares[row][col].has_rival(piece.color):
+                    p = temp_board.squares[row][col].piece
+                    temp_board.possible_moves(p, row, col, bool=False)
+                    for m in p.moves:
+                        if isinstance(m.final.piece, King):
+                            return True
+        return False
+
+    def possible_moves(self, piece, row, col, bool=True):
 
         def pawn_moves():
             steps = 1 if piece.moved else 2
@@ -42,7 +68,11 @@ class Board:
                         initial = Square(row, col)
                         final = Square(possible_row, col)
                         move = Move(initial, final)
-                        piece.add_move(move)
+                        if bool:
+                            if not self.in_check(piece, move):
+                                piece.add_move(move)
+                        else:
+                            piece.add_move(move)
                     else:
                         break
                 else:
@@ -53,9 +83,14 @@ class Board:
                 if Square.is_inside(possible_row, possible_col):
                     if self.squares[possible_row][possible_col].has_rival(piece.color):
                         initial = Square(row, col)
-                        final = Square(possible_row, possible_col)
+                        final_piece = self.squares[possible_row][possible_col].piece
+                        final = Square(possible_row, possible_col, final_piece)
                         move = Move(initial, final)
-                        piece.add_move(move)
+                        if bool:
+                            if not self.in_check(piece, move):
+                                piece.add_move(move)
+                        else:
+                            piece.add_move(move)
 
         def knight_moves():
             possibles = [
@@ -74,9 +109,15 @@ class Board:
                 if Square.is_inside(possible_row, possible_col):
                     if self.squares[possible_row][possible_col].is_empty_or_rival(piece.color):
                         initial = Square(row, col)
-                        final = Square(possible_row, possible_col)
+                        final_piece = self.squares[possible_row][possible_col].piece
+                        final = Square(possible_row, possible_col, final_piece)
                         move = Move(initial, final)
-                        piece.add_move(move)
+                        if bool:
+                            if not self.in_check(piece, move):
+                                piece.add_move(move)
+                            else:break
+                        else:
+                            piece.add_move(move)
 
         def straightline_moves(incrs):
             for incr in incrs:
@@ -86,14 +127,23 @@ class Board:
                 while True:
                     if Square.is_inside(possible_row, possible_col):
                         initial = Square(row, col)
-                        final = Square(possible_row, possible_col)
+                        final_piece = self.squares[possible_row][possible_col].piece
+                        final = Square(possible_row, possible_col, final_piece)
                         move = Move(initial, final)
                         if not self.squares[possible_row][possible_col].has_piece():
-                            piece.add_move(move)
-                        if self.squares[possible_row][possible_col].has_rival(piece.color):
-                            piece.add_move(move)
+                            if bool:
+                                if not self.in_check(piece, move):
+                                    piece.add_move(move)
+                            else:
+                                piece.add_move(move)
+                        elif self.squares[possible_row][possible_col].has_rival(piece.color):
+                            if bool:
+                                if not self.in_check(piece, move):
+                                    piece.add_move(move)
+                            else:
+                                piece.add_move(move)
                             break
-                        if self.squares[possible_row][possible_col].has_mate(piece.color):
+                        elif self.squares[possible_row][possible_col].has_mate(piece.color):
                             break
                     else:
                         break
@@ -122,6 +172,56 @@ class Board:
                         final = Square(possible_row, possible_col)
                         move = Move(initial, final)
                         piece.add_move(move)
+
+            if not piece.moved:
+                left_rook = self.squares[row][0].piece
+                if left_rook.name == "rook":
+                    if not left_rook.moved:
+                        for c in range(1, 4):
+                            if self.squares[row][c].has_piece():
+                                break
+
+                            if c == 3:
+                                piece.left_rook = left_rook
+                                initial = Square(row, 0)
+                                final = Square(row, 3)
+                                moveR = Move(initial, final)
+                                left_rook.add_move(move)
+                                initial = Square(row, col)
+                                final = Square(row, 2)
+                                moveK = Move(initial, final)
+                                if bool:
+                                    if not self.in_check(piece, moveK) and not self.in_check(left_rook, moveR):
+                                        left_rook.add_move(moveR)
+                                        piece.add_move(moveK)
+                                else:
+                                    left_rook.add_move(moveR)
+                                    piece.add_move(moveK)
+
+                right_rook = self.squares[row][7].piece
+                if right_rook.name == "rook":
+                    if not right_rook.moved:
+                        for c in range(5, 7):
+                            if self.squares[row][c].has_piece():
+                                break
+
+                            if c == 6:
+                                piece.right_rook = right_rook
+                                initial = Square(row, 7)
+                                final = Square(row, 5)
+                                moveR = Move(initial, final)
+                                right_rook.add_move(move)
+                                initial = Square(row, col)
+                                final = Square(row, 6)
+                                moveK = Move(initial, final)
+                                if bool:
+                                    if not self.in_check(piece, moveK) and not self.in_check(left_rook, moveR):
+                                        right_rook.add_move(moveR)
+                                        piece.add_move(moveK)
+                                else:
+                                    right_rook.add_move(moveR)
+                                    piece.add_move(moveK)
+
 
         match piece.name:
             case "pawn":
